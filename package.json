@@ -1,0 +1,13 @@
+{
+  "name": "agenda-partage",
+  "version": "1.0.0",
+  "description": "Agenda partagé stylé en lecture seule, alimenté par un calendrier CalDAV Nextcloud via une API Vercel.",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "ical.js": "^2.2.1"
+  }
+}

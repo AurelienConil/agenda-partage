@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agenda partagé</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.11/purify.min.js"></script>
+<style>
+  :root {
+    --paper: #e9e2d0;
+    --paper-deep: #ddd3bd;
+    --card: #fbf8f0;
+    --ink: #2a2622;
+    --ink-soft: #6f675b;
+    --line: #cdc2a8;
+    --pin: #b5482f;
+    --accent: #1f5c4d;
+    --shadow: rgba(60, 50, 30, 0.18);
+    --radius: 4px;
+    --maxw: 1180px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: "Inter", system-ui, sans-serif;
+    color: var(--ink);
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.35), transparent 40%),
+      repeating-linear-gradient(0deg, transparent, transparent 38px, rgba(120,100,70,0.04) 39px, transparent 40px);
+    line-height: 1.5;
+  }
+
+  /* ---------- En-tête ---------- */
+  header.masthead {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 56px 24px 24px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .masthead .kicker {
+    font-family: "Inter", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.32em;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin: 0 0 10px;
+  }
+  .masthead h1 {
+    font-family: "Archivo Black", sans-serif;
+    font-weight: 400;
+    font-size: clamp(40px, 8vw, 86px);
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-transform: uppercase;
+  }
+  .masthead .sub {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-size: clamp(16px, 2.4vw, 22px);
+    color: var(--ink-soft);
+    margin: 14px 0 0;
+    max-width: 60ch;
+  }
+
+  /* ---------- Barre de contrôle ---------- */
+  .controls {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 20px 24px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 28px;
+    align-items: flex-end;
+  }
+  .control-group { display: flex; flex-direction: column; gap: 7px; }
+  .control-group > label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .seg {
+    display: inline-flex;
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--card);
+  }
+  .seg button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 8px 16px;
+    font: inherit;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .seg button + button { border-left: 1.5px solid var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    appearance: none;
+    border: 1.5px solid var(--cat, var(--line));
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 6px 13px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: background 0.12s ease;
+  }
+  .chip::before {
+    content: "";
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--cat, var(--ink-soft));
+  }
+  .chip[aria-pressed="true"] { background: var(--cat, var(--ink)); color: #fff; border-color: transparent; }
+  .chip[aria-pressed="true"]::before { background: rgba(255,255,255,0.85); }
+
+  /* ---------- Grille ---------- */
+  main { max-width: var(--maxw); margin: 0 auto; padding: 28px 24px 80px; }
+
+  .month-band {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin: 40px 0 18px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .month-band:first-of-type { margin-top: 8px; }
+  .month-band h2 {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    font-size: 26px;
+    margin: 0;
+    text-transform: capitalize;
+  }
+  .month-band .count {
+    font-size: 13px;
+    color: var(--ink-soft);
+    letter-spacing: 0.04em;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 26px;
+  }
+
+  .card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 2px 4px 0 var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.14s ease, box-shadow 0.14s ease;
+  }
+  .card:nth-child(3n+1) { transform: rotate(-0.5deg); }
+  .card:nth-child(3n+2) { transform: rotate(0.4deg); }
+  .card:hover {
+    transform: rotate(0deg) translateY(-3px);
+    box-shadow: 4px 8px 0 var(--shadow);
+  }
+  /* la punaise */
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 11px; left: 50%;
+    transform: translateX(-50%);
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff8a6e, var(--pin) 60%, #7d2c1b);
+    box-shadow: 0 2px 3px rgba(0,0,0,0.35);
+    z-index: 3;
+  }
+
+  .card .thumb {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+    background: var(--paper-deep);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .card .body { padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 11px; flex: 1; }
+  .card.no-thumb .body { padding-top: 30px; }
+
+  .date-tag {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    font-family: "Fraunces", serif;
+    color: var(--accent);
+  }
+  .date-tag .d { font-size: 30px; font-weight: 600; line-height: 1; }
+  .date-tag .my { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); }
+  .date-tag .time { font-size: 13px; color: var(--ink-soft); letter-spacing: 0.02em; }
+
+  .card h3 {
+    font-family: "Archivo Black", sans-serif;
+    font-weight: 400;
+    font-size: 19px;
+    line-height: 1.12;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .card .loc {
+    font-size: 13px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .card .desc {
+    font-size: 14px;
+    color: #463f37;
+    margin-top: 2px;
+  }
+  .card .desc p { margin: 0 0 8px; }
+  .card .desc p:last-child { margin-bottom: 0; }
+  .card .desc ul, .card .desc ol { margin: 0 0 8px; padding-left: 18px; }
+  .card .desc a { color: var(--accent); }
+  .card .desc strong { font-weight: 600; }
+
+  .card .cats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
+  .tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--cat, var(--ink-soft));
+  }
+
+  /* ---------- États ---------- */
+  .state {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 80px 24px;
+    text-align: center;
+    color: var(--ink-soft);
+  }
+  .state strong { color: var(--ink); }
+  .skeleton {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 26px;
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 28px 24px;
+  }
+  .sk {
+    height: 230px;
+    border-radius: var(--radius);
+    background: linear-gradient(100deg, var(--paper-deep) 30%, #efe9d9 50%, var(--paper-deep) 70%);
+    background-size: 200% 100%;
+    animation: shimmer 1.3s infinite;
+  }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  footer {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 30px 24px 60px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card:hover { transform: none; transition: none; }
+    .sk { animation: none; }
+  }
+  @media (max-width: 560px) {
+    .masthead { padding-top: 40px; }
+    .controls { gap: 16px; }
+  }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+  <header class="masthead">
+    <p class="kicker">Le babillard</p>
+    <h1>Agenda&nbsp;partagé</h1>
+    <p class="sub">Ce qui se prépare, épinglé au fil des jours par celles et ceux qui font vivre l'agenda.</p>
+  </header>
+
+  <section class="controls" id="controls" hidden>
+    <div class="control-group">
+      <label>Trier</label>
+      <div class="seg" id="sort" role="group" aria-label="Trier les événements">
+        <button data-sort="date" aria-pressed="true">Par date</button>
+        <button data-sort="cat" aria-pressed="false">Par genre</button>
+      </div>
+    </div>
+    <div class="control-group" style="flex:1; min-width:240px;">
+      <label>Filtrer par genre</label>
+      <div class="chips" id="filters"></div>
+    </div>
+  </section>
+
+  <div class="skeleton" id="loading">
+    <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+    <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+  </div>
+
+  <main id="main" hidden></main>
+
+  <div class="state" id="error" hidden></div>
+
+  <footer id="footer" hidden>
+    <span id="meta"></span>
+    <span>Lecture seule · mis à jour régulièrement</span>
+  </footer>
+
+<script>
+// ---- Configuration : adapte si l'API est hébergée sur un autre domaine ----
+// Si le front est servi PAR Vercel (même projet), laisse "/api/events".
+// Si le front est ailleurs (GitHub Pages…), mets l'URL complète, par ex.
+//   "https://mon-agenda.vercel.app/api/events"
+const API_URL = "/api/events";
+
+const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+
+// Palette cohérente : couleur dérivée du nom de catégorie (hash → teinte).
+const catColor = (name) => {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  return `hsl(${h} 52% 42%)`;
+};
+
+const state = { events: [], sort: "date", active: new Set() };
+
+function fmtDate(iso, allDay) {
+  const d = new Date(iso);
+  return {
+    day: d.getDate(),
+    monthYear: `${MONTHS[d.getMonth()].slice(0,3)} ${d.getFullYear()}`,
+    monthFull: `${MONTHS[d.getMonth()]} ${d.getFullYear()}`,
+    monthKey: `${d.getFullYear()}-${String(d.getMonth()).padStart(2,"0")}`,
+    time: allDay ? "Toute la journée" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+  };
+}
+
+function renderMarkdown(src) {
+  if (!src) return "";
+  const raw = marked.parse(src, { breaks: true });
+  return DOMPurify.sanitize(raw);
+}
+
+function buildFilters() {
+  const all = new Set();
+  state.events.forEach(e => e.categories.forEach(c => all.add(c)));
+  const box = document.getElementById("filters");
+  box.innerHTML = "";
+  [...all].sort((a,b)=>a.localeCompare(b,"fr")).forEach(cat => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = cat;
+    b.style.setProperty("--cat", catColor(cat));
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => {
+      if (state.active.has(cat)) { state.active.delete(cat); b.setAttribute("aria-pressed","false"); }
+      else { state.active.add(cat); b.setAttribute("aria-pressed","true"); }
+      render();
+    });
+    box.appendChild(b);
+  });
+}
+
+function card(ev) {
+  const f = ev.start ? fmtDate(ev.start, ev.allDay) : null;
+  const el = document.createElement("article");
+  el.className = "card" + (ev.image ? "" : " no-thumb");
+
+  let html = "";
+  if (ev.image) {
+    html += `<img class="thumb" src="${ev.image}" alt="" loading="lazy" onerror="this.remove();this.closest('.card')?.classList.add('no-thumb')">`;
+  }
+  html += `<div class="body">`;
+  if (f) {
+    html += `<span class="date-tag"><span class="d">${f.day}</span><span class="my">${f.monthYear}</span><span class="time">· ${f.time}</span></span>`;
+  }
+  html += `<h3>${escapeHtml(ev.title)}</h3>`;
+  if (ev.location) html += `<div class="loc">↳ ${escapeHtml(ev.location)}</div>`;
+  if (ev.description) html += `<div class="desc">${renderMarkdown(ev.description)}</div>`;
+  if (ev.categories.length) {
+    html += `<div class="cats">` + ev.categories.map(c =>
+      `<span class="tag" style="--cat:${catColor(c)}">${escapeHtml(c)}</span>`).join("") + `</div>`;
+  }
+  html += `</div>`;
+  el.innerHTML = html;
+  return el;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+function filtered() {
+  if (state.active.size === 0) return state.events;
+  return state.events.filter(e => e.categories.some(c => state.active.has(c)));
+}
+
+function render() {
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const list = filtered();
+
+  if (list.length === 0) {
+    main.innerHTML = `<div class="state">Aucun événement ne correspond à ce filtre.</div>`;
+    return;
+  }
+
+  if (state.sort === "date") {
+    // Regroupé par mois.
+    const groups = new Map();
+    list.forEach(e => {
+      const key = e.start ? fmtDate(e.start, e.allDay).monthKey : "zzz";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(e);
+    });
+    [...groups.keys()].sort().forEach(key => {
+      const evs = groups.get(key);
+      const band = document.createElement("div");
+      band.className = "month-band";
+      const label = evs[0].start ? fmtDate(evs[0].start, evs[0].allDay).monthFull : "À programmer";
+      band.innerHTML = `<h2>${label}</h2><span class="count">${evs.length} événement${evs.length>1?"s":""}</span>`;
+      main.appendChild(band);
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      evs.forEach(e => grid.appendChild(card(e)));
+      main.appendChild(grid);
+    });
+  } else {
+    // Regroupé par genre (catégorie). Un événement multi-genre apparaît dans chacun.
+    const groups = new Map();
+    list.forEach(e => {
+      const cats = e.categories.length ? e.categories : ["Sans genre"];
+      cats.forEach(c => { if (!groups.has(c)) groups.set(c, []); groups.get(c).push(e); });
+    });
+    [...groups.keys()].sort((a,b)=>a.localeCompare(b,"fr")).forEach(cat => {
+      const evs = groups.get(cat);
+      const band = document.createElement("div");
+      band.className = "month-band";
+      band.innerHTML = `<h2 style="color:${catColor(cat)}">${escapeHtml(cat)}</h2><span class="count">${evs.length} événement${evs.length>1?"s":""}</span>`;
+      main.appendChild(band);
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      evs.forEach(e => grid.appendChild(card(e)));
+      main.appendChild(grid);
+    });
+  }
+}
+
+document.querySelectorAll("#sort button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#sort button").forEach(b => b.setAttribute("aria-pressed","false"));
+    btn.setAttribute("aria-pressed","true");
+    state.sort = btn.dataset.sort;
+    render();
+  });
+});
+
+async function load() {
+  try {
+    const res = await fetch(API_URL, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    state.events = (data.events || []).filter(e => e.start);
+
+    document.getElementById("loading").hidden = true;
+
+    if (state.events.length === 0) {
+      document.getElementById("error").hidden = false;
+      document.getElementById("error").innerHTML = "<strong>Agenda vide.</strong><br>Aucun événement n'a été trouvé sur la période.";
+      return;
+    }
+
+    buildFilters();
+    document.getElementById("controls").hidden = false;
+    document.getElementById("main").hidden = false;
+    document.getElementById("footer").hidden = false;
+    document.getElementById("meta").textContent =
+      `${state.events.length} événement${state.events.length>1?"s":""}` + (data.stale ? " · données en cache" : "");
+    render();
+  } catch (err) {
+    document.getElementById("loading").hidden = true;
+    const e = document.getElementById("error");
+    e.hidden = false;
+    e.innerHTML = `<strong>Impossible de charger l'agenda.</strong><br>${escapeHtml(err.message)}<br><br>Vérifie que l'API <code>${API_URL}</code> répond et que les variables d'environnement Nextcloud sont configurées.`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>
