@@ -28,12 +28,28 @@ d'un calendrier **partagé Nextcloud (CalDAV)**.
 ### Comment alimenter les champs « stylés »
 
 Dans chaque événement Nextcloud :
-- **Genre / catégorie** → champ **Catégories** (tu peux en mettre plusieurs).
+- **Genre / catégorie** → mets un ou plusieurs **hashtags dans la
+  description** (ex. `#Théâtre #Concert`). On n'utilise pas le champ
+  « Catégories » CalDAV : il est invisible dans l'app Calendrier de
+  macOS/iOS, alors que la description reste éditable partout. Les hashtags
+  sont retirés de l'affichage — ils ne sont pas montrés au public.
 - **Description en Markdown** → écris simplement du Markdown dans la
-  **Description** (`**gras**`, listes `- …`, liens `[texte](url)`).
+  **Description** (`**gras**`, listes `- …`, liens `[texte](url)`), hashtags
+  de genre inclus n'importe où dans le texte.
 - **Photo** → ajoute une propriété image. Le plus simple : une **pièce jointe**
   (`ATTACH`) qui pointe vers une URL d'image (`.jpg/.png/.webp`), ou une
-  propriété `X-IMAGE` / `IMAGE` si ton client le permet.
+  propriété `X-IMAGE` / `IMAGE` si ton client le permet. Un **lien de partage
+  public Nextcloud** (`https://.../s/TOKEN`) marche aussi : il est converti
+  automatiquement en lien de téléchargement direct (`/download`) par l'API.
+- **Lien "en savoir plus"** → champ **URL** de l'événement (propriété
+  standard `URL`). Affiché comme lien cliquable sur la carte s'il est en
+  `http://` ou `https://`.
+- **Brouillon / privé** → ajoute le hashtag **`#Brouillon`** ou **`#Privé`**
+  dans la description (`#Draft` / `#Private` marchent aussi, insensible à la
+  casse et aux accents) : l'événement reste dans ton calendrier Nextcloud
+  mais n'est **jamais renvoyé par l'API** ni affiché sur le site. Pratique
+  pour préparer un événement à l'avance ou en garder un hors ligne. Retire le
+  hashtag quand il est prêt à publier.
 
 ---
 

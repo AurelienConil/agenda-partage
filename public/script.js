@@ -63,6 +63,8 @@ function card(ev) {
   html += `<h3>${escapeHtml(ev.title)}</h3>`;
   if (ev.location) html += `<div class="loc">↳ ${escapeHtml(ev.location)}</div>`;
   if (ev.description) html += `<div class="desc">${renderMarkdown(ev.description)}</div>`;
+  const link = ev.url ? safeUrl(ev.url) : null;
+  if (link) html += `<a class="more" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">En savoir plus →</a>`;
   if (ev.categories.length) {
     html += `<div class="cats">` + ev.categories.map(c =>
       `<span class="tag" style="--cat:${catColor(c)}">${escapeHtml(c)}</span>`).join("") + `</div>`;
@@ -70,6 +72,14 @@ function card(ev) {
   html += `</div>`;
   el.innerHTML = html;
   return el;
+}
+
+function safeUrl(u) {
+  try {
+    const parsed = new URL(u, location.origin);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") return parsed.href;
+  } catch {}
+  return null;
 }
 
 function escapeHtml(s) {

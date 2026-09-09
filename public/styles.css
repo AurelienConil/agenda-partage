@@ -251,6 +251,16 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 28px 24px 80px; }
 .card .desc a { color: var(--accent); }
 .card .desc strong { font-weight: 600; }
 
+.card .more {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.card .more:hover { text-decoration: underline; }
+
 .card .cats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
 
 .tag {

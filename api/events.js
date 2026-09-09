@@ -58,18 +58,54 @@ function getProp(vevent, name) {
   return p ? p.getFirstValue() : null;
 }
 
+// Catégories qui masquent un événement du site public (brouillon / privé).
+// Insensible à la casse et aux accents.
+const HIDDEN_CATEGORIES = new Set(["brouillon", "draft", "prive", "private"]);
+
+function stripAccents(s) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+function isHidden(categories) {
+  return categories.some((c) => HIDDEN_CATEGORIES.has(stripAccents(c.trim().toLowerCase())));
+}
+
+// Genre / brouillon / privé se pilotent via des hashtags dans la description
+// (ex. "#Théâtre #Brouillon"), plutôt que la propriété CALDAV CATEGORIES :
+// les clients grand public (Calendrier macOS/iOS) n'exposent pas cette
+// propriété dans leur interface, alors que la description reste éditable.
+function extractHashtags(text) {
+  if (!text) return { tags: [], cleaned: "" };
+  const seen = new Set();
+  const tags = [];
+  const cleaned = text
+    .replace(/(^|\s)#([\p{L}\p{N}_-]+)/gu, (_, pre, tag) => {
+      if (!seen.has(tag)) { seen.add(tag); tags.push(tag); }
+      return "";
+    })
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return { tags, cleaned };
+}
+
+// Convertit un lien de partage public Nextcloud (page HTML de prévisualisation,
+// ex. https://host/index.php/s/TOKEN) en lien de téléchargement direct du
+// fichier, exploitable dans une balise <img>. Laisse les autres URLs intactes.
+function toDirectNextcloudUrl(rawUrl) {
+  if (!rawUrl) return rawUrl;
+  const m = rawUrl.match(/^(https?:\/\/[^\s?#]+\/s\/[A-Za-z0-9]+)(\/[^?\s]*)?(\?.*)?$/i);
+  if (!m) return rawUrl;
+  const [, base, subpath, query] = m;
+  if (subpath) return rawUrl; // déjà /download, /preview, etc.
+  return base + "/download" + (query || "");
+}
+
 // Transforme un VEVENT ical.js en objet JSON propre pour le front.
 function normalizeEvent(vevent) {
   const event = new ICAL.Event(vevent);
 
-  // Catégories = notre "genre". Nextcloud les stocke dans CATEGORIES.
-  const categoriesProp = vevent.getFirstProperty("categories");
-  let categories = [];
-  if (categoriesProp) {
-    categories = categoriesProp.getValues().flatMap((v) =>
-      String(v).split(",").map((s) => s.trim()).filter(Boolean)
-    );
-  }
+  const { tags: categories, cleaned: description } = extractHashtags(event.description || "");
 
   // Photo : on accepte plusieurs conventions, par ordre de priorité.
   //  1) propriété standard IMAGE (RFC 7986)
@@ -85,9 +121,11 @@ function normalizeEvent(vevent) {
     const attach = vevent.getFirstProperty("attach");
     if (attach) {
       const val = String(attach.getFirstValue() || "");
-      if (/\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(val)) image = val;
+      if (/\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(val) || /\/s\/[A-Za-z0-9]+/.test(val)) image = val;
     }
   }
+
+  image = toDirectNextcloudUrl(image);
 
   const start = event.startDate ? event.startDate.toJSDate() : null;
   const end = event.endDate ? event.endDate.toJSDate() : null;
@@ -96,7 +134,7 @@ function normalizeEvent(vevent) {
   return {
     uid: event.uid || null,
     title: event.summary || "(sans titre)",
-    description: event.description || "", // contenu Markdown libre
+    description, // contenu Markdown libre, hashtags de catégorie retirés
     location: event.location || "",
     categories,
     image,
@@ -157,7 +195,8 @@ async function fetchEvents() {
       const comp = new ICAL.Component(jcal);
       const vevents = comp.getAllSubcomponents("vevent");
       for (const ve of vevents) {
-        events.push(normalizeEvent(ve));
+        const normalized = normalizeEvent(ve);
+        if (!isHidden(normalized.categories)) events.push(normalized);
       }
     } catch (e) {
       // Un bloc malformé ne doit pas faire échouer tout l'agenda.
