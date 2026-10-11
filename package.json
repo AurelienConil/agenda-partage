@@ -1,11 +1,12 @@
 {
-  "name": "agenda-partage",
+  "name": "alt-gr",
   "version": "1.0.0",
-  "description": "Agenda partagé stylé en lecture seule, alimenté par un calendrier CalDAV Nextcloud via une API Vercel.",
+  "description": "ALT GR : agenda partagé des structures culturelles grenobloises (arts numériques, hybrides, expérimentaux, nouveaux médias), alimenté par Nextcloud via une API Vercel.",
   "type": "module",
   "scripts": {
     "dev": "vercel dev",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "local": "node scripts/serve.js"
   },
   "dependencies": {
     "ical.js": "^2.2.1"

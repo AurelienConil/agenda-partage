@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Structures partenaires — ALT GR</title>
+  <meta name="description" content="ALT GR, l'agenda partagé des structures culturelles grenobloises : arts numériques, arts hybrides, création expérimentale et nouveaux médias." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.11/purify.min.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <p class="kicker"><a href="index.html">ALT GR</a> · arts numériques à Grenoble</p>
+    <h1 id="title">Structures partenaires</h1>
+    <p class="sub" id="sub">Les lieux et associations grenoblois qui font vivre l'agenda ALT GR.</p>
+  </header>
+
+  <nav class="controls">
+    <a class="btn" id="back" href="index.html">← Agenda</a>
+  </nav>
+
+  <div class="skeleton" id="loading">
+    <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+  </div>
+
+  <main id="main" hidden></main>
+
+  <div class="state" id="error" hidden></div>
+
+  <script src="common.js"></script>
+  <script src="lieux.js"></script>
+</body>
+</html>

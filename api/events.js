@@ -1,4 +1,6 @@
 import ICAL from "ical.js";
+import { venueSlug, venueNameFromLocation } from "../lib/venue.js";
+import { proxiedImageUrl } from "../lib/image-proxy.js";
 
 // ---------------------------------------------------------------------------
 // Cache en mémoire (persiste tant que l'instance serverless reste "chaude").
@@ -89,55 +91,48 @@ function extractHashtags(text) {
   return { tags, cleaned };
 }
 
-// Convertit un lien de partage public Nextcloud (page HTML de prévisualisation,
-// ex. https://host/index.php/s/TOKEN) en lien de téléchargement direct du
-// fichier, exploitable dans une balise <img>. Laisse les autres URLs intactes.
-function toDirectNextcloudUrl(rawUrl) {
-  if (!rawUrl) return rawUrl;
-  const m = rawUrl.match(/^(https?:\/\/[^\s?#]+\/s\/[A-Za-z0-9]+)(\/[^?\s]*)?(\?.*)?$/i);
-  if (!m) return rawUrl;
-  const [, base, subpath, query] = m;
-  if (subpath) return rawUrl; // déjà /download, /preview, etc.
-  return base + "/download" + (query || "");
+// Images : une ligne "IMAGE=https://…" dans la description (aucun client
+// de calendrier grand public ne permet de régler la propriété IMAGE).
+// Chaque ligne devient une image Markdown à sa place dans le texte, pour
+// pouvoir alterner texte et images :
+//   Texte\nIMAGE=https://site/1.jpg\nSuite  →  Texte\n![](</api/image?url=…1.jpg>)\nSuite
+function extractImages(text) {
+  const images = [];
+  const withImages = text.replace(/^[ \t]*image[ \t]*=[ \t]*(\S+)[ \t]*$/gim, (line, url) => {
+    if (!/^https?:\/\//i.test(url)) return line;
+    const proxied = proxiedImageUrl(url); // voir lib/image-proxy.js
+    images.push(proxied);
+    return `![](<${proxied}>)`;
+  });
+  return { images, description: withImages };
 }
 
 // Transforme un VEVENT ical.js en objet JSON propre pour le front.
 function normalizeEvent(vevent) {
   const event = new ICAL.Event(vevent);
 
-  const { tags: categories, cleaned: description } = extractHashtags(event.description || "");
+  const { tags: categories, cleaned } = extractHashtags(event.description || "");
+  const { images, description } = extractImages(cleaned);
 
-  // Photo : on accepte plusieurs conventions, par ordre de priorité.
-  //  1) propriété standard IMAGE (RFC 7986)
-  //  2) X-IMAGE / X-PHOTO (custom)
-  //  3) une URL d'image trouvée dans ATTACH
-  let image =
-    getProp(vevent, "image") ||
-    getProp(vevent, "x-image") ||
-    getProp(vevent, "x-photo") ||
-    null;
-
-  if (!image) {
-    const attach = vevent.getFirstProperty("attach");
-    if (attach) {
-      const val = String(attach.getFirstValue() || "");
-      if (/\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(val) || /\/s\/[A-Za-z0-9]+/.test(val)) image = val;
-    }
-  }
-
-  image = toDirectNextcloudUrl(image);
+  // Vignette de la carte : la première image de la description, sinon la
+  // propriété standard IMAGE (RFC 7986) si un client l'a renseignée.
+  const imageProp = getProp(vevent, "image");
+  const image = images[0] || (/^https?:\/\//i.test(imageProp || "") ? proxiedImageUrl(imageProp) : null);
 
   const start = event.startDate ? event.startDate.toJSDate() : null;
   const end = event.endDate ? event.endDate.toJSDate() : null;
   const allDay = event.startDate ? event.startDate.isDate : false;
+  const location = event.location || "";
 
   return {
     uid: event.uid || null,
     title: event.summary || "(sans titre)",
-    description, // contenu Markdown libre, hashtags de catégorie retirés
-    location: event.location || "",
+    description, // Markdown, hashtags retirés, lignes IMAGE= changées en images
+    location,
+    venue: venueSlug(venueNameFromLocation(location)) || null, // clé vers /api/lieux
     categories,
     image,
+    images, // images insérées dans la description, dans l'ordre
     url: getProp(vevent, "url") || null,
     start: start ? start.toISOString() : null,
     end: end ? end.toISOString() : null,

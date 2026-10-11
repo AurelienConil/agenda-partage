@@ -45,6 +45,9 @@ header.masthead {
   margin: 0 0 10px;
 }
 
+.masthead .kicker a { color: inherit; text-decoration: none; }
+.masthead .kicker a:hover { color: var(--ink); }
+
 .masthead h1 {
   font-family: "Archivo Black", sans-serif;
   font-weight: 400;
@@ -107,6 +110,25 @@ header.masthead {
 
 .seg button + button { border-left: 1.5px solid var(--ink); }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+
+/* Bouton-lien (« Structures partenaires », retour), calé à droite de la barre */
+.control-end { margin-left: auto; }
+
+.btn {
+  display: inline-block;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.btn:hover { background: var(--ink); color: var(--card); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -183,6 +205,8 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 28px 24px 80px; }
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+.card { cursor: pointer; }
+
 .card:hover {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
   border-color: var(--accent);
@@ -239,10 +263,18 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 28px 24px 80px; }
   gap: 5px;
 }
 
+a.loc { text-decoration: none; width: fit-content; }
+a.loc:hover { color: var(--ink); text-decoration: underline; }
+
 .card .desc {
   font-size: 14px;
   color: #463f37;
   margin-top: 2px;
+  /* Aperçu : le texte complet est dans la fenêtre de détail. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .card .desc p { margin: 0 0 8px; }
@@ -272,6 +304,129 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 28px 24px 80px; }
   color: #fff;
   background: var(--cat, var(--ink-soft));
 }
+
+/* ---------- Fenêtre de détail d'un événement ---------- */
+/* Pas de défilement de la page derrière la fenêtre ouverte. */
+html:has(dialog[open]) { overflow: hidden; }
+
+.modal {
+  --pad: 32px;
+  width: min(760px, calc(100% - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal::backdrop { background: rgba(20, 20, 20, 0.62); }
+
+.modal-inner { position: relative; }
+
+.modal-inner::before {
+  content: "";
+  display: block;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
+}
+
+/* Reste visible en haut à droite pendant le défilement, par-dessus l'image
+   (la marge négative lui retire sa place dans le flux). */
+.modal-close {
+  position: sticky;
+  top: 12px;
+  display: block;
+  margin: 12px 12px -52px auto;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close:hover { background: var(--ink); color: var(--card); }
+
+.modal-hero { display: block; width: 100%; height: auto; }
+
+.modal-body {
+  padding: 24px var(--pad) var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-body h2 {
+  font-family: "Archivo Black", sans-serif;
+  font-weight: 400;
+  font-size: clamp(26px, 5vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.modal .loc { font-size: 15px; color: var(--ink-soft); }
+
+.modal-desc { font-size: 16px; color: #463f37; }
+.modal-desc p { margin: 0 0 12px; }
+.modal-desc a { color: var(--accent); }
+
+/* Images de la description : pleine largeur de la fenêtre, bord à bord. */
+.modal-desc img {
+  display: block;
+  width: calc(100% + 2 * var(--pad));
+  max-width: none;
+  height: auto;
+  margin: 16px calc(-1 * var(--pad));
+}
+
+.modal .more { font-size: 15px; font-weight: 600; color: var(--accent); text-decoration: none; width: fit-content; }
+.modal .more:hover { text-decoration: underline; }
+.modal .cats { display: flex; flex-wrap: wrap; gap: 6px; }
+
+@media (max-width: 560px) {
+  .modal { --pad: 20px; width: calc(100% - 16px); max-height: calc(100dvh - 16px); }
+}
+
+/* ---------- Structures partenaires ---------- */
+a.venue-card { color: inherit; text-decoration: none; }
+.venue-card h3 { font-size: 24px; }
+.venue-card .desc { margin: 0; }
+.venue-card .count {
+  margin-top: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.lieu-desc {
+  font-size: 16px;
+  max-width: 70ch;
+  margin-bottom: 24px;
+}
+
+.lieu-desc a { color: var(--accent); }
+
+.section-title {
+  font-family: "Archivo Black", sans-serif;
+  font-weight: 400;
+  font-size: clamp(24px, 4vw, 36px);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  margin: 48px 0 0;
+  padding-top: 24px;
+  border-top: 2px solid var(--ink);
+}
+.lieu-desc img { max-width: 100%; height: auto; border-radius: var(--radius); }
+.lieu-desc h1, .lieu-desc h2, .lieu-desc h3 { font-family: "Fraunces", serif; font-weight: 600; }
 
 /* ---------- États ---------- */
 .state {
@@ -324,6 +479,7 @@ footer {
 @media (max-width: 560px) {
   .masthead { padding-top: 40px; }
   .controls { gap: 16px; }
+  .control-end { margin-left: 0; }
 }
 
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }

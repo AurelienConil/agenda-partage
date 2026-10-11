@@ -1,31 +1,7 @@
 const API_URL = "/api/events";
+const LIEUX_URL = "/api/lieux";
 
-const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
-
-const catColor = (name) => {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return `hsl(${h} 52% 42%)`;
-};
-
-const state = { events: [], sort: "date", active: new Set() };
-
-function fmtDate(iso, allDay) {
-  const d = new Date(iso);
-  return {
-    day: d.getDate(),
-    monthYear: `${MONTHS[d.getMonth()].slice(0,3)} ${d.getFullYear()}`,
-    monthFull: `${MONTHS[d.getMonth()]} ${d.getFullYear()}`,
-    monthKey: `${d.getFullYear()}-${String(d.getMonth()).padStart(2,"0")}`,
-    time: allDay ? "Toute la journée" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-  };
-}
-
-function renderMarkdown(src) {
-  if (!src) return "";
-  const raw = marked.parse(src, { breaks: true });
-  return DOMPurify.sanitize(raw);
-}
+const state = { events: [], venues: new Set(), sort: "date", active: new Set() };
 
 function buildFilters() {
   const all = new Set();
@@ -47,45 +23,6 @@ function buildFilters() {
   });
 }
 
-function card(ev) {
-  const f = ev.start ? fmtDate(ev.start, ev.allDay) : null;
-  const el = document.createElement("article");
-  el.className = "card" + (ev.image ? "" : " no-thumb");
-
-  let html = "";
-  if (ev.image) {
-    html += `<img class="thumb" src="${ev.image}" alt="" loading="lazy" onerror="this.remove();this.closest('.card')?.classList.add('no-thumb')">`;
-  }
-  html += `<div class="body">`;
-  if (f) {
-    html += `<span class="date-tag"><span class="d">${f.day}</span><span class="my">${f.monthYear}</span><span class="time">· ${f.time}</span></span>`;
-  }
-  html += `<h3>${escapeHtml(ev.title)}</h3>`;
-  if (ev.location) html += `<div class="loc">↳ ${escapeHtml(ev.location)}</div>`;
-  if (ev.description) html += `<div class="desc">${renderMarkdown(ev.description)}</div>`;
-  const link = ev.url ? safeUrl(ev.url) : null;
-  if (link) html += `<a class="more" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">En savoir plus →</a>`;
-  if (ev.categories.length) {
-    html += `<div class="cats">` + ev.categories.map(c =>
-      `<span class="tag" style="--cat:${catColor(c)}">${escapeHtml(c)}</span>`).join("") + `</div>`;
-  }
-  html += `</div>`;
-  el.innerHTML = html;
-  return el;
-}
-
-function safeUrl(u) {
-  try {
-    const parsed = new URL(u, location.origin);
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") return parsed.href;
-  } catch {}
-  return null;
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-}
-
 function filtered() {
   if (state.active.size === 0) return state.events;
   return state.events.filter(e => e.categories.some(c => state.active.has(c)));
@@ -102,24 +39,7 @@ function render() {
   }
 
   if (state.sort === "date") {
-    const groups = new Map();
-    list.forEach(e => {
-      const key = e.start ? fmtDate(e.start, e.allDay).monthKey : "zzz";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(e);
-    });
-    [...groups.keys()].sort().forEach(key => {
-      const evs = groups.get(key);
-      const band = document.createElement("div");
-      band.className = "month-band";
-      const label = evs[0].start ? fmtDate(evs[0].start, evs[0].allDay).monthFull : "À programmer";
-      band.innerHTML = `<h2>${label}</h2><span class="count">${evs.length} événement${evs.length>1?"s":""}</span>`;
-      main.appendChild(band);
-      const grid = document.createElement("div");
-      grid.className = "grid";
-      evs.forEach(e => grid.appendChild(card(e)));
-      main.appendChild(grid);
-    });
+    byMonth(list).forEach(g => section(main, g.label, g.events, state.venues));
   } else {
     const groups = new Map();
     list.forEach(e => {
@@ -127,15 +47,8 @@ function render() {
       cats.forEach(c => { if (!groups.has(c)) groups.set(c, []); groups.get(c).push(e); });
     });
     [...groups.keys()].sort((a,b)=>a.localeCompare(b,"fr")).forEach(cat => {
-      const evs = groups.get(cat);
-      const band = document.createElement("div");
-      band.className = "month-band";
-      band.innerHTML = `<h2 style="color:${catColor(cat)}">${escapeHtml(cat)}</h2><span class="count">${evs.length} événement${evs.length>1?"s":""}</span>`;
-      main.appendChild(band);
-      const grid = document.createElement("div");
-      grid.className = "grid";
-      evs.forEach(e => grid.appendChild(card(e)));
-      main.appendChild(grid);
+      const band = section(main, escapeHtml(cat), groups.get(cat), state.venues);
+      band.querySelector("h2").style.color = catColor(cat);
     });
   }
 }
@@ -151,10 +64,14 @@ document.querySelectorAll("#sort button").forEach(btn => {
 
 async function load() {
   try {
-    const res = await fetch(API_URL, { headers: { Accept: "application/json" } });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
+    // Les lieux sont un bonus : s'ils ne chargent pas, l'agenda s'affiche
+    // quand même, avec les lieux en texte simple.
+    const [data, lieux] = await Promise.all([
+      fetchJson(API_URL),
+      fetchJson(LIEUX_URL).catch(() => ({ lieux: [] })),
+    ]);
     state.events = (data.events || []).filter(e => e.start);
+    state.venues = new Set((lieux.lieux || []).map(l => l.slug));
 
     document.getElementById("loading").hidden = true;
 

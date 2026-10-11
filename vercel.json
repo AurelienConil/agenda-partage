@@ -3,6 +3,12 @@
   "functions": {
     "api/events.js": {
       "maxDuration": 10
+    },
+    "api/lieux.js": {
+      "maxDuration": 10
+    },
+    "api/image.js": {
+      "maxDuration": 10
     }
   },
   "rewrites": [

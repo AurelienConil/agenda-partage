@@ -1,15 +1,23 @@
-# Agenda partagé — Nextcloud + Vercel
+# ALT GR
 
-Un site web qui affiche, **en lecture seule et de manière stylée**, le contenu
-d'un calendrier **partagé Nextcloud (CalDAV)**.
+**ALT GR** réunit les structures culturelles grenobloises autour d'un
+**agenda partagé** des arts numériques, arts hybrides, de la création
+expérimentale et des nouveaux médias (*new media arts*).
 
-- Le **mot de passe CalDAV n'est jamais exposé** au navigateur : il reste dans
-  une variable d'environnement, côté serveur (fonction Vercel).
-- Le front interroge une petite **API JSON** (`/api/events`) et l'affiche :
-  tri **par date** ou **par genre**, filtres par catégorie, **photo**
-  d'événement, **description en Markdown**.
-- Front et API peuvent être sur le **même projet Vercel**, ou **séparés**
-  (API sur Vercel, page hébergée ailleurs comme GitHub Pages).
+Chaque structure ajoute ses événements dans un calendrier **Nextcloud**
+partagé ; le site les affiche, en lecture seule :
+
+- tri **par date** ou **par genre**, filtres par genre (hashtags) ;
+- **fenêtre de détail** au clic sur un événement, texte complet et photos
+  en pleine largeur ;
+- page **Structures partenaires** : une fiche par lieu (Markdown stocké dans
+  Nextcloud) avec les événements qui s'y déroulent ;
+- photos reprises des sites des lieux, par simple copier-coller d'URL.
+
+Côté technique : un front statique (`public/`) et trois petites fonctions
+Vercel (`api/`). Les identifiants Nextcloud restent côté serveur et ne sont
+**jamais exposés** au navigateur. Front et API peuvent être sur le **même
+projet Vercel**, ou **séparés** (API sur Vercel, page hébergée ailleurs).
 
 ---
 
@@ -24,6 +32,11 @@ d'un calendrier **partagé Nextcloud (CalDAV)**.
    `Paramètres` → `Sécurité` → **Créer un nouveau mot de passe d'application**.
    Copie-le tout de suite (il ne s'affiche qu'une fois). Il est révocable à tout
    moment et fonctionne même avec la double authentification activée.
+3. **Le dossier des lieux** : crée un dossier **`Lieux`** à la racine de tes
+   fichiers Nextcloud (même compte que le calendrier). Mets-y **un fichier
+   Markdown par lieu**, nommé comme le lieu : `ARCAN.md`, `Hexagone.md`…
+   Aucune configuration supplémentaire : l'adresse est déduite de
+   `CALDAV_URL`.
 
 ### Comment alimenter les champs « stylés »
 
@@ -36,11 +49,30 @@ Dans chaque événement Nextcloud :
 - **Description en Markdown** → écris simplement du Markdown dans la
   **Description** (`**gras**`, listes `- …`, liens `[texte](url)`), hashtags
   de genre inclus n'importe où dans le texte.
-- **Photo** → ajoute une propriété image. Le plus simple : une **pièce jointe**
-  (`ATTACH`) qui pointe vers une URL d'image (`.jpg/.png/.webp`), ou une
-  propriété `X-IMAGE` / `IMAGE` si ton client le permet. Un **lien de partage
-  public Nextcloud** (`https://.../s/TOKEN`) marche aussi : il est converti
-  automatiquement en lien de téléchargement direct (`/download`) par l'API.
+- **Photos** → ajoute dans la description une ligne `IMAGE=https://…` avec
+  l'adresse d'une image hébergée sur un autre site (site du lieu, de
+  l'artiste…). La ligne est retirée du texte. La **première image** sert de
+  vignette sur la carte. Dans la **fenêtre de détail** (clic sur la carte),
+  chaque image s'affiche **à sa place dans le texte, en pleine largeur** :
+  on peut donc alterner texte et images :
+  ```
+  Présentation du spectacle.
+  IMAGE=https://site-du-lieu.fr/photo-1.webp
+  La suite du texte.
+  IMAGE=https://site-du-lieu.fr/photo-2.jpg
+  Fin du texte.
+  ```
+  Un clic droit → « Copier l'adresse de l'image » sur le site source suffit.
+  Les images passent par le relais `/api/image`, qui les renvoie avec le bon
+  format même quand le site d'origine l'annonce mal (cas des `.avif` de
+  l'Hexagone). Le relais n'accepte que les images citées dans l'agenda.
+  Une image qui ne charge pas est simplement masquée.
+- **Lieu** → champ **Lieu** (`LOCATION`) de l'événement, avec le nom du
+  fichier de la fiche (sans `.md`). La comparaison est tolérante : casse,
+  accents, tirets, espaces et article initial ne comptent pas (« ciel »,
+  « Le Ciel », « le-ciel » désignent le même lieu), et une adresse après une
+  virgule est ignorée (« Le Ciel, 2 rue… »). Le lieu devient alors un lien
+  vers sa fiche ; sinon il reste en texte simple.
 - **Lien "en savoir plus"** → champ **URL** de l'événement (propriété
   standard `URL`). Affiché comme lien cliquable sur la carte s'il est en
   `http://` ou `https://`.
@@ -77,7 +109,20 @@ Déploie :
 vercel --prod
 ```
 
-Ton site est en ligne. L'API répond sur `/api/events`, le site sur `/`.
+Ton site est en ligne : le site sur `/`, les API sur `/api/events`,
+`/api/lieux` et `/api/image`.
+
+### Tester en local
+
+Copie `.env.example` en `.env` (jamais commité) avec tes vraies valeurs, puis :
+
+```bash
+npm install
+npm run local          # http://localhost:3000
+```
+
+En local, les caches sont désactivés : une modification dans Nextcloud est
+visible au rechargement de la page.
 
 ---
 
@@ -86,13 +131,19 @@ Ton site est en ligne. L'API répond sur `/api/events`, le site sur `/`.
 Si tu veux garder **uniquement l'API sur Vercel** et héberger la page autre part
 (GitHub Pages, Netlify, ton propre serveur) :
 
-1. Dans `public/index.html`, change :
+1. Dans `public/script.js` **et** `public/lieux.js`, change les adresses
+   d'API :
    ```js
    const API_URL = "https://TON-PROJET.vercel.app/api/events";
+   const LIEUX_URL = "https://TON-PROJET.vercel.app/api/lieux";
    ```
 2. Dans Vercel, mets `ALLOWED_ORIGIN` sur l'URL exacte de ton front
    (ex. `https://moncompte.github.io`) pour autoriser le CORS.
-3. Déploie `public/index.html` où tu veux.
+3. Déploie tout le dossier `public/` où tu veux.
+
+⚠️ Limite actuelle : les photos sont servies par `/api/image` avec une
+adresse relative, elles ne s'afficheront donc pas sur un front séparé sans
+adapter `lib/image-proxy.js` (préfixer l'adresse du projet Vercel).
 
 ---
 
@@ -116,13 +167,39 @@ Navigateur ──GET /api/events──▶  Fonction Vercel
 
 ## Personnalisation rapide
 
-- **Couleurs / typo** : tout est en variables CSS en haut de `public/index.html`
-  (`:root { … }`).
-- **Fenêtre temporelle** : `RANGE_PAST_DAYS` / `RANGE_FUTURE_DAYS`.
-- **Titre / sous-titre** : dans le `<header class="masthead">` de l'HTML.
+- **Couleurs / typo** : tout est en variables CSS en haut de
+  `public/styles.css` (`:root { … }`).
+- **Fenêtre temporelle** : `RANGE_PAST_DAYS` / `RANGE_FUTURE_DAYS`
+  (défaut : 30 jours en arrière, 365 en avant).
+- **Titre / sous-titre** : dans le `<header class="masthead">` de
+  `public/index.html` et `public/lieux.html`.
 
 ## Sécurité
 
 - Ne committe **jamais** ton vrai `.env` (déjà dans `.gitignore`).
 - L'API est en lecture seule : elle n'expose aucune méthode d'écriture.
 - Le mot de passe d'application Nextcloud est **révocable** indépendamment.
+
+
+
+## Feuille de route
+
+### Fait
+
+- Renommage du projet en **ALT GR**.
+- **Structures partenaires** : fiches des lieux en Markdown lues dans
+  Nextcloud (WebDAV), lieu cliquable sur les événements, événements de chaque
+  lieu sous sa fiche. Pas de tri « par lieu » dans l'agenda : la vue par lieu
+  n'existe que sur la fiche.
+- **Fenêtre de détail** d'un événement : texte complet, images en pleine
+  largeur à leur place dans le texte, fermeture par Échap / clic à côté /
+  croix. Un clic sur un lien de la carte suit le lien.
+- **Photos par URL** (`IMAGE=…` dans la description) et relais `/api/image`
+  qui corrige les formats mal annoncés par les sites sources.
+
+### Idées en réserve (pas prioritaires)
+
+- **Filtre CSS sur les images** : une option de style graphique (bichromie,
+  grain…) pour harmoniser les photos. Pas important.
+- **Backoffice** : une 2e app pour ajouter des événements sans passer par un
+  client de calendrier. Uniquement s'il reste vraiment du temps.

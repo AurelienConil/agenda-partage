@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agenda partagé</title>
+  <title>ALT GR — Agenda des arts numériques à Grenoble</title>
+  <meta name="description" content="ALT GR, l'agenda partagé des structures culturelles grenobloises : arts numériques, arts hybrides, création expérimentale et nouveaux médias." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -13,9 +14,9 @@
 </head>
 <body>
   <header class="masthead">
-    <p class="kicker"> Sémaphore : actus Art Numérique de l'agglo Grenobloise  </p>
-    <h1>Agenda&nbsp;partagé</h1>
-    <p class="sub">Ce qui se prépare, épinglé au fil des jours par celles et ceux qui font vivre l'agenda.</p>
+    <p class="kicker">Arts numériques · hybrides · expérimentaux · nouveaux médias — Grenoble</p>
+    <h1>ALT&nbsp;GR</h1>
+    <p class="sub">L'agenda partagé des structures culturelles grenobloises : arts numériques, arts hybrides, création expérimentale et nouveaux médias.</p>
   </header>
 
   <section class="controls" id="controls" hidden>
@@ -30,6 +31,9 @@
       <label>Filtrer par genre</label>
       <div class="chips" id="filters"></div>
     </div>
+    <div class="control-group control-end">
+      <a class="btn" href="lieux.html">Structures partenaires →</a>
+    </div>
   </section>
 
   <div class="skeleton" id="loading">
@@ -43,9 +47,10 @@
 
   <footer id="footer" hidden>
     <span id="meta"></span>
-    <span>Lecture seule · mis à jour régulièrement</span>
+    <span>ALT GR · agenda partagé, mis à jour régulièrement</span>
   </footer>
 
+  <script src="common.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
