@@ -87,9 +87,14 @@ Dans chaque événement Nextcloud :
 
 ## 2. Déployer sur Vercel
 
+Le projet est **relié à GitHub** : Vercel déploie tout seul à chaque push.
+La mise en ligne se résume à `git push`.
+
+### Première mise en place
+
 ```bash
 npm i -g vercel        # si pas déjà installé
-vercel                 # première fois : lie le projet
+vercel link            # lie le dossier au projet Vercel
 ```
 
 Puis dans **Vercel → ton projet → Settings → Environment Variables**, ajoute
@@ -103,14 +108,39 @@ Puis dans **Vercel → ton projet → Settings → Environment Variables**, ajou
 | `CACHE_TTL_SECONDS` | `300` *(optionnel)*                                              |
 | `ALLOWED_ORIGIN`    | `*` *(ou l'URL du front si séparé)*                              |
 
-Déploie :
+### Mettre en ligne (usage normal)
 
 ```bash
-vercel --prod
+git add -A && git commit -m "message" && git push
 ```
 
-Ton site est en ligne : le site sur `/`, les API sur `/api/events`,
-`/api/lieux` et `/api/image`.
+- Push sur **`main`** → déploiement en **production**.
+- Push sur **une autre branche** (ou une PR) → déploiement **Preview**, avec
+  une URL de test unique qui ne touche pas la production.
+
+Le site est servi sur `/`, les API sur `/api/events`, `/api/lieux` et
+`/api/image`.
+
+### Quelle commande pour quoi ?
+
+| Besoin | Commande |
+|---|---|
+| Mettre en ligne | `git push` |
+| Tester en local, sans Vercel | `npm run local` |
+| Tester en local, avec le comportement Vercel | `npm run dev` (`vercel dev`) |
+| Récupérer les variables d'environnement de Vercel | `vercel env pull .env` |
+| Voir les logs d'un déploiement | `vercel logs <url>` |
+| Revenir à un déploiement précédent | `vercel rollback` (ou le dashboard) |
+
+- **`npm run local`** : serveur Node simple, rapide, sans compte Vercel. C'est
+  l'outil de tous les jours.
+- **`npm run dev`** (`vercel dev`) : émule Vercel (routes, `vercel.json`,
+  fonctions `api/`). À utiliser seulement pour vérifier qu'un comportement
+  propre à Vercel marchera une fois en ligne.
+- **`vercel --prod`** : déploie le dossier local en production **sans passer
+  par GitHub**. À éviter : la prod contiendrait du code absent du dépôt, et le
+  prochain `git push` l'écraserait. Réservé aux vraies urgences (GitHub
+  indisponible), d'où l'absence de script `npm` pour ça.
 
 ### Tester en local
 
